@@ -1,6 +1,5 @@
 # 导入PySide6的相关模块
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QWidget,QDesktopWidget
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QWidget,QScreen
 # 导入vlc模块，用于播放视频
 import vlc
 # 导入sys模块，用于处理系统参数
@@ -15,11 +14,10 @@ class Player(QMainWindow):
         # 设置窗口的标题
         self.setWindowTitle("视频播放器")
         # 设置窗口的位置和大小
-        window = QWidget()
-        screen = QDesktopWidget().screenGeometry()
-        x = (screen.width() - window.width()) / 2
-        y = (screen.height() - window.height()) / 2
         self.setGeometry(100, 100, 800, 600)
+        center = QScreen. availableGeometry (QApplication. primaryScreen ()).center ()
+        geo = MyPyForm. frameGeometry ()
+        MyPyForm. move (geo. topLeft ())
         # 创建一个vlc实例
         self.vlc_instance = vlc.Instance()
         # 创建一个vlc媒体播放器
@@ -59,6 +57,9 @@ class Player(QMainWindow):
 if __name__ == "__main__":
     # 创建一个QApplication对象，传入系统参数
     app = QApplication(sys.argv)
+    #sys.argv 是一个列表，它包含了从命令行传递给Python程序的参数
+
+    
     # 创建一个Player对象
     player = Player()
     # 显示窗口
