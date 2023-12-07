@@ -41,8 +41,7 @@ class Player(QMainWindow):
         self.setCentralWidget(self.widget)
 
         # 创建一个垂直布局
-        self.mainLayout = QVBoxLayout()
-        self.widget.setLayout(self.mainLayout)
+        self.mainLayout = QVBoxLayout(self.widget)
 
 
         # 创建一个QFrame作为视频的容器
@@ -113,10 +112,13 @@ class Player(QMainWindow):
     def fullScreen(self):
         self.controlWidget.hide()
         self.setWindowState(Qt.WindowFullScreen)
+        #去掉 layout margin 否则全屏的时候会有白边
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
 
     def noFullScreen(self):
         self.setWindowState(Qt.WindowNoState)
         self.controlWidget.show()
+        self.mainLayout.setContentsMargins(9, 9, 9, 9)
 
     #雙擊全屏普通切換
     def mouseDoubleClickVideoFrameEvent(self, event):
