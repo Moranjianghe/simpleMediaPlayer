@@ -85,12 +85,18 @@ class Player(QMainWindow):
         self.controlLayout.addWidget(self.timeLabel)
 
         # 创建一个QSlider作为音量条
+        self.volumeLabel = QLabel("🔊", self.controlWidget) # 添加了一个标签，用于显示音量状态
+        self.controlLayout.addWidget(self.volumeLabel)
         self.volumeSlider = QSlider(Qt.Horizontal, self.controlWidget)
         self.volumeSlider.setMaximum(100)
         self.controlLayout.addWidget(self.volumeSlider)
         #self.volumeSlider.valueChanged.connect(self.setVolume)
         # 修改了这里，使用lambda表达式，否则会直接调用setVolume函数，而不是等待滑动事件
         self.volumeSlider.valueChanged.connect(lambda: self.setVolume(self.volumeSlider.value()))
+
+
+
+        self.open_file()
 
         # 打开一个文件对话框，选择要播放的视频文件
         self.open_file()
@@ -196,6 +202,8 @@ class Player(QMainWindow):
         elif event.key() == Qt.Key_Escape and self.isFullScreen():
             self.showNormal()
         # 否则，调用父类的方法
+        elif event.key() == Qt.Key_M: # 添加了一个快捷键，用于切换静音模式
+            self.toggle_mute()
         else:
             super().keyPressEvent(event)
 
@@ -240,6 +248,12 @@ class Player(QMainWindow):
         # 更新时间标签的文本
         self.timeLabel.setText(currentTime.toString("hh:mm:ss") + " / " + totalTime.toString("hh:mm:ss"))
 
+    def toggle_mute(self): # 添加了一个方法，用于切换静音模式
+        self.player.audio_toggle_mute() # 调用播放器的方法，切换静音状态
+        if self.player.audio_get_mute(): # 判断当前是否是静音状态
+            self.volumeLabel.setText("🔇") # 如果是静音，就显示一个静音的图标
+        else:
+            self.volumeLabel.setText("🔊") # 如果不是静音，就显示一个正常的图标
 # 如果是主模块
 if __name__ == "__main__":
     # 创建一个QApplication对象，传入系统参数
