@@ -133,6 +133,9 @@ class Player(QMainWindow):
         # 播放视频
         self.player.play()
 
+        #视频播放默认是静音的，需要切换一次，我也不知道为什么
+        self.player.audio_toggle_mute()
+
         #设置一个定时器，每秒更新一次进度条和时间标签
         self.timer = self.startTimer(1000)#单位是好喵
         self.timerEvent(None)
@@ -250,7 +253,7 @@ class Player(QMainWindow):
 
     def toggle_mute(self): # 添加了一个方法，用于切换静音模式
         self.player.audio_toggle_mute() # 调用播放器的方法，切换静音状态
-        if self.player.audio_get_mute(): # 判断当前是否是静音状态
+        if not self.player.audio_get_mute(): # 判断当前是否是静音状态
             self.volumeLabel.setText("🔇") # 如果是静音，就显示一个静音的图标
         else:
             self.volumeLabel.setText("🔊") # 如果不是静音，就显示一个正常的图标
