@@ -95,8 +95,8 @@ class Player(QMainWindow):
         self.volumeSlider.valueChanged.connect(lambda: self.setVolume(self.volumeSlider.value()))
 
 
-
-        self.open_file()
+        #不知道为啥这里打开了两次文件，先注释了
+        #self.open_file()
 
         # 打开一个文件对话框，选择要播放的视频文件
         self.open_file()
@@ -176,13 +176,13 @@ class Player(QMainWindow):
                 self.fullScreen()
 
 
-    def positionChanged(self, position):
-        # 根据视频的当前位置，更新进度条的值
-        self.positionSlider.setValue(position)
-        # 根据视频的当前位置，更新时间标签的文本
-        currentTime = QTime(0, 0, 0).addMSecs(position)
-        totalTime = QTime(0, 0, 0).addMSecs(self.player.get_length())
-        self.timeLabel.setText(currentTime.toString("mm:ss") + " / " + totalTime.toString("mm:ss"))
+#    def positionChanged(self, position):
+#        # 根据视频的当前位置，更新进度条的值
+#        self.positionSlider.setValue(position)
+#        # 根据视频的当前位置，更新时间标签的文本
+#        currentTime = QTime(0, 0, 0).addMSecs(position)
+#        totalTime = QTime(0, 0, 0).addMSecs(self.player.get_length())
+#        self.timeLabel.setText(currentTime.toString("mm:ss") + " / " + totalTime.toString("mm:ss"))
 
 #    def durationChanged(self, duration):
 #        # 根据视频的总时长，设置进度条的范围
@@ -190,7 +190,7 @@ class Player(QMainWindow):
 
     def setPosition(self, position):
         # 根据进度条的值，设置视频的当前位置
-        self.player.set_position(position / 1000)
+        self.player.set_time(position)
 
 
 # 重写 keyPressEvent 方法，用于捕捉按键事件
@@ -236,13 +236,19 @@ class Player(QMainWindow):
             self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
         # 获取当前的播放位置和总时长，单位是毫秒
-        position = self.player.get_position() * 1000
+        # GPT 弄混了 time 和 position 这两个类似但不同的方法，
+        # position 返回的是一个 0~1 的浮点数，
+        # 而 time 返回的才是毫秒
+        # 这导致我在这个问题上卡了很久
+        position = self.player.get_time()
         duration = self.player.get_length()
 
         # 如果总时长不为0，更新进度条的最大值和当前值
         if duration > 0:
             self.positionSlider.setMaximum(duration)
             self.positionSlider.setValue(position)
+            print("duration="+str(duration))
+            print("position="+str(position))
 
         # 将毫秒转换为时分秒的格式
         currentTime = QTime(0, 0, 0).addMSecs(position)
