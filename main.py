@@ -1,11 +1,13 @@
 # 导入PySide6的相关模块
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QWidget,QFrame,QHBoxLayout
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QWidget,QFrame,QHBoxLayout,QSlider,QStyle,QPushButton,QLabel,QMessageBox
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt,QTime
 # 导入vlc模块，用于播放视频
 import vlc
 # 导入sys模块，用于处理系统参数
 import sys
+
+import os
 
 # 定义一个Player类，继承自QMainWindow
 class Player(QMainWindow):
@@ -43,7 +45,6 @@ class Player(QMainWindow):
         # 创建一个垂直布局
         self.mainLayout = QVBoxLayout(self.widget)
 
-
         # 创建一个QFrame作为视频的容器
         self.videoFrame = QFrame(self)
         self.videoFrame.mouseDoubleClickEvent = self.mouseDoubleClickVideoFrameEvent
@@ -52,17 +53,44 @@ class Player(QMainWindow):
         # 将QFrame添加到布局中
         self.mainLayout.addWidget(self.videoFrame)
 
-
-        # 创建一个 wigit 作为控制工具的容器
+        # 创建一个QWidget作为控制工具的容器
         self.controlWidget = QWidget(self)
-        self.mainLayout.addWidget(self.controlWidget)        
-        #設置其最大高度為 50，沒有邊框
+        self.mainLayout.addWidget(self.controlWidget)
+        # 设置其最大高度为50，没有边框
         self.controlWidget.setMaximumHeight(50)
+        self.controlWidget.setContentsMargins(0, 0, 0, 0)
 
+        # 创建一个水平布局
+        self.controlLayout = QHBoxLayout(self.controlWidget)
 
-        
+        # 创建一个QPushButton作为暂停/播放按钮
+        self.playButton = QPushButton(self.controlWidget)
+        self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        # 修改了这里，使用lambda表达式，否则会直接调用play_pause函数，而不是等待点击事件
+        #self.playButton.clicked.connect(self.play_pause())
+        self.playButton.clicked.connect(lambda: self.play_pause())
+        self.controlLayout.addWidget(self.playButton)
 
+        # 创建一个QSlider作为进度条
+        self.positionSlider = QSlider(Qt.Horizontal, self.controlWidget)
+        #self.positionSlider.sliderMoved.connect(self.setPosition)
+        # 修改了这里，使用lambda表达式，否则会直接调用setPosition函数，而不是等待滑动事件
+        # self.positionSlider.valueChanged.connect(lambda: self.setPosition(self.positionSlider.value()))
+        # 使用 valueChanged 会在进度条更新时发生卡顿，改为 sliderMoved
+        self.positionSlider.sliderMoved.connect(lambda: self.setPosition(self.positionSlider.value()))
+        self.controlLayout.addWidget(self.positionSlider)
 
+        # 创建一个QLabel作为当前时间和总时间的显示
+        self.timeLabel = QLabel("00:00 / 00:00", self.controlWidget)
+        self.controlLayout.addWidget(self.timeLabel)
+
+        # 创建一个QSlider作为音量条
+        self.volumeSlider = QSlider(Qt.Horizontal, self.controlWidget)
+        self.volumeSlider.setMaximum(100)
+        self.controlLayout.addWidget(self.volumeSlider)
+        #self.volumeSlider.valueChanged.connect(self.setVolume)
+        # 修改了这里，使用lambda表达式，否则会直接调用setVolume函数，而不是等待滑动事件
+        self.volumeSlider.valueChanged.connect(lambda: self.setVolume(self.volumeSlider.value()))
 
         # 打开一个文件对话框，选择要播放的视频文件
         self.open_file()
@@ -74,24 +102,34 @@ class Player(QMainWindow):
         # 默认显示视频文件，但也可以选择其他文件
         filepath, _ = QFileDialog.getOpenFileName(self, "Open File", filter="视频文件(*.mp4 *.avi *.mkv *.wmv *.mov *.mpg *.mpeg *.m4v *.3gp *.webm *.flv *.vob *.ogv *.gif);;音频文件(*.mp3 *.m4a *.flac *.wav *.ogg *.aac *.wma *.mid *.midi *.amr *.opus *.aiff);;所有文件 (*)")
         # 如果文件路径不为空
-        if filepath:
-            # 创建一个vlc媒体对象，并且禁用按键和键盘，
-            # 此处如果按键与键盘不禁用，会导致双击事件被 vlc 带走
-            # 传入文件路径
-            self.media = self.vlc_instance.media_new(filepath)
-            self.player.set_media(self.media)
-            self.player.video_set_key_input(False)
-            self.player.video_set_mouse_input(False)
+        if not filepath:
+            return
+         # 添加了一个判断条件，用于检测文件是否存在
+        if not os.path.exists(filepath):
+            # 如果文件不存在，就弹出一个提示框
+                QMessageBox.warning(self, "文件不存在", "你选择的文件不存在或无法打开，请重新选择一个有效的文件。") 
+                # 弹出一个警告提示框，标题为"文件不存在"，内容为"你选择的文件不存在或无法打开，请重新选择一个有效的文件。"
+        # 创建一个vlc媒体对象，并且禁用按键和键盘，
+        # 此处如果按键与键盘不禁用，会导致双击事件被 vlc 带走
+        # 传入文件路径
+        self.media = self.vlc_instance.media_new(filepath)
+        self.player.set_media(self.media)
+        self.player.video_set_key_input(False)
+        self.player.video_set_mouse_input(False)
 
-            # 将媒体对象设置给播放器
-            self.player.set_media(self.media)
-            # 将窗口的ID设置给播放器，用于显示视频
-            #libvlc_media_player_set_hwnd是一个vlc库提供的函数，
-            # 它的作用是将一个win32/win64窗口句柄设置给媒体播放器，用于显示视频。
-            # 这个函数的第一个参数是媒体播放器的指针，第二个参数是窗口句柄。
-            self.player.set_hwnd(self.videoFrame.winId())
-            # 播放视频
-            self.player.play()
+        # 将媒体对象设置给播放器
+        self.player.set_media(self.media)
+        # 将窗口的ID设置给播放器，用于显示视频
+        #libvlc_media_player_set_hwnd是一个vlc库提供的函数，
+        # 它的作用是将一个win32/win64窗口句柄设置给媒体播放器，用于显示视频。
+        # 这个函数的第一个参数是媒体播放器的指针，第二个参数是窗口句柄。
+        self.player.set_hwnd(self.videoFrame.winId())
+        # 播放视频
+        self.player.play()
+
+        #设置一个定时器，每秒更新一次进度条和时间标签
+        self.timer = self.startTimer(1000)#单位是好喵
+        self.timerEvent(None)
 
 
 #    def mouseDoubleClickEvent(self, event):
@@ -129,21 +167,22 @@ class Player(QMainWindow):
                 self.fullScreen()
 
 
-    # 定义一个方法，用于更新滑动条的值
-    def update_position(self):
-        # 获取视频的当前位置，是一个 0 到 1 之间的小数
-        position = self.player.get_position()
-        # 将位置转换为一个 0 到 1000 之间的整数
-        position = int(position * 1000)
-        # 设置滑动条的值为位置
-        self.slider.setValue(position)
+    def positionChanged(self, position):
+        # 根据视频的当前位置，更新进度条的值
+        self.positionSlider.setValue(position)
+        # 根据视频的当前位置，更新时间标签的文本
+        currentTime = QTime(0, 0, 0).addMSecs(position)
+        totalTime = QTime(0, 0, 0).addMSecs(self.player.get_length())
+        self.timeLabel.setText(currentTime.toString("mm:ss") + " / " + totalTime.toString("mm:ss"))
 
-    # 定义一个方法，用于根据滑动条的值设置视频的位置
-    def set_position(self, position):
-        # 将位置转换为一个 0 到 1 之间的小数
-        position = position / 1000.0
-        # 设置视频的位置
-        self.player.set_position(position)
+#    def durationChanged(self, duration):
+#        # 根据视频的总时长，设置进度条的范围
+#        self.positionSlider.setRange(0, duration)
+
+    def setPosition(self, position):
+        # 根据进度条的值，设置视频的当前位置
+        self.player.set_position(position / 1000)
+
 
 # 重写 keyPressEvent 方法，用于捕捉按键事件
     def keyPressEvent(self, event):
@@ -166,11 +205,40 @@ class Player(QMainWindow):
         # 如果视频正在播放，那么暂停视频，并设置按钮的文本为“播放”
         if self.player.is_playing():
             self.player.pause()
-            self.button.setText("播放")
+            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+#            self.button.setText("播放")
         # 如果视频已经暂停，那么恢复视频，并设置按钮的文本为“暂停”
         else:
             self.player.play()
-            self.button.setText("暂停")
+            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+#            self.button.setText("暂停")
+
+    def setVolume(self, volume):
+        # 根据音量条的值，设置视频的音量
+        self.player.audio_set_volume(volume)
+
+    # 添加了这里，定义一个定时器事件，用于更新进度条和时间标签
+    def timerEvent(self, event):
+        if self.player.is_playing():
+            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+        else:
+            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+
+        # 获取当前的播放位置和总时长，单位是毫秒
+        position = self.player.get_position() * 1000
+        duration = self.player.get_length()
+
+        # 如果总时长不为0，更新进度条的最大值和当前值
+        if duration > 0:
+            self.positionSlider.setMaximum(duration)
+            self.positionSlider.setValue(position)
+
+        # 将毫秒转换为时分秒的格式
+        currentTime = QTime(0, 0, 0).addMSecs(position)
+        totalTime = QTime(0, 0, 0).addMSecs(duration)
+
+        # 更新时间标签的文本
+        self.timeLabel.setText(currentTime.toString("hh:mm:ss") + " / " + totalTime.toString("hh:mm:ss"))
 
 # 如果是主模块
 if __name__ == "__main__":
