@@ -1,7 +1,7 @@
 # 导入PySide6的相关模块
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QWidget,QFrame,QHBoxLayout,QSlider,QStyle,QPushButton,QLabel,QMessageBox
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtCore import Qt,QTime
+from PySide6.QtCore import Qt,QTime,QTimer 
 # 导入vlc模块，用于播放视频
 import vlc
 # 导入sys模块，用于处理系统参数
@@ -48,6 +48,19 @@ class Player(QMainWindow):
         # 创建一个QFrame作为视频的容器
         self.videoFrame = QFrame(self)
         self.videoFrame.mouseDoubleClickEvent = self.mouseDoubleClickVideoFrameEvent
+        self.videoFrame.mousePressEvent = self.mousePressVideoFrameEvent
+
+        # 创建一个定时器
+        self.videoFrame.timer = QTimer(self) 
+         # 设置为单次触发
+        self.videoFrame.timer.setSingleShot(True)
+        # 连接到单击事件的函数
+        self.videoFrame.timer.timeout.connect(self.videoFrameSingle_click) 
+         # 获取系统的双击间隔时间
+        self.videoFrameDouble_click_interval = QApplication.doubleClickInterval()
+        # 设置定时器的间隔时间为双击间隔时间
+        self.videoFrame.timer.setInterval(self.videoFrameDouble_click_interval) 
+
         # 设置QFrame的背景颜色为黑色
         self.videoFrame.setStyleSheet("background-color: black;")
         # 将QFrame添加到布局中
@@ -89,6 +102,8 @@ class Player(QMainWindow):
         self.controlLayout.addWidget(self.volumeLabel)
         self.volumeSlider = QSlider(Qt.Horizontal, self.controlWidget)
         self.volumeSlider.setMaximum(100)
+        # 设置初始值为 50 不然视频刚开始没声音
+        self.volumeSlider.setValue(50) 
         self.controlLayout.addWidget(self.volumeSlider)
         #self.volumeSlider.valueChanged.connect(self.setVolume)
         # 修改了这里，使用lambda表达式，否则会直接调用setVolume函数，而不是等待滑动事件
@@ -134,7 +149,8 @@ class Player(QMainWindow):
         self.player.play()
 
         #视频播放默认是静音的，需要切换一次，我也不知道为什么
-        self.player.audio_toggle_mute()
+        #好像不是，注释了
+        #self.player.audio_toggle_mute()
 
         #设置一个定时器，每秒更新一次进度条和时间标签
         self.timer = self.startTimer(1000)#单位是好喵
@@ -175,6 +191,25 @@ class Player(QMainWindow):
             else:
                 self.fullScreen()
 
+    #单擊暂停/继续
+    def mousePressVideoFrameEvent(self, event):
+        if event.button() == Qt.LeftButton: # 如果是左键点击
+            if self.videoFrame.timer.isActive(): # 如果定时器已经启动
+                self.videoFrame.timer.stop() # 停止定时器
+                self.videoFrameDouble_click() # 执行双击事件的函数
+            else: # 如果定时器没有启动
+                self.videoFrame.timer.start() # 启动定时器
+
+    def videoFrameSingle_click(self):
+        print("单击事件")
+        self.play_pause()
+
+    def videoFrameDouble_click(self):
+        print("双击事件")
+        if self.isFullScreen():
+            self.noFullScreen()
+        else:
+            self.fullScreen()
 
 #    def positionChanged(self, position):
 #        # 根据视频的当前位置，更新进度条的值
