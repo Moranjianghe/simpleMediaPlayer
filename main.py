@@ -1,6 +1,6 @@
 # 导入PySide6的相关模块
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QVBoxLayout, QWidget,QFrame,QHBoxLayout,QSlider,QStyle,QPushButton,QLabel,QMessageBox
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication,QFont
 from PySide6.QtCore import Qt,QTime,QTimer 
 # 导入vlc模块，用于播放视频
 import vlc
@@ -50,21 +50,56 @@ class Player(QMainWindow):
         self.videoFrame.mouseDoubleClickEvent = self.mouseDoubleClickVideoFrameEvent
         self.videoFrame.mousePressEvent = self.mousePressVideoFrameEvent
 
-        # 创建一个定时器
-        self.videoFrame.timer = QTimer(self) 
+        # 创建一个双击定时器
+        self.videoFrame.clickTimer = QTimer(self) 
          # 设置为单次触发
-        self.videoFrame.timer.setSingleShot(True)
+        self.videoFrame.clickTimer.setSingleShot(True)
         # 连接到单击事件的函数
-        self.videoFrame.timer.timeout.connect(self.videoFrameSingle_click) 
+        self.videoFrame.clickTimer.timeout.connect(self.videoFrameSingle_click) 
          # 获取系统的双击间隔时间
         self.videoFrameDouble_click_interval = QApplication.doubleClickInterval()
         # 设置定时器的间隔时间为双击间隔时间
-        self.videoFrame.timer.setInterval(self.videoFrameDouble_click_interval) 
+        self.videoFrame.clickTimer.setInterval(self.videoFrameDouble_click_interval) 
 
         # 设置QFrame的背景颜色为黑色
         self.videoFrame.setStyleSheet("background-color: black;")
         # 将QFrame添加到布局中
         self.mainLayout.addWidget(self.videoFrame)
+
+        # 创建一个 QLabel 对象，用于显示“暂停”
+        self.stateLabel = QLabel("暂停",self.widget )
+        # 设置 QLabel 的字体和大小
+        self.stateLabel.setFont(QFont("Arial", 32)) 
+        # 设置 QLabel 的颜色和背景颜色（半透明）
+        self.stateLabel.setStyleSheet("color: white; background-color: rgba(0, 0, 0,0.5)") 
+        # 设置 QLabel 的对齐方式（居中）
+        self.stateLabel.setAlignment(Qt.AlignCenter) 
+        # 设置 QLabel 的大小
+        self.stateLabel.resize(100, 100) 
+        # 设置 QLabel 的位置（相对于 QFrame）
+        self.stateLabel.move(100, 50) 
+        # 使用 lower 方法让 QLabel 在 QFrame 的上层
+        # self.stateLabel.lower()
+        # 搞反了，应该是 raise
+        # 注意是 raise_ 和传统 QT 不同
+        # self.stateLabel.raise_()
+        # 发现没有也能显示
+        # 或者使用 setWindowFlags 方法让 QLabel 不受 QFrame 的影响
+        # self.stateLabel.setWindowFlags(Qt.FramelessWindowHint)
+        # self.stateLabel.move(self.videoFrame.x() + 100, self.videoFrame.y() + 50)
+        self.stateLabel.hide()
+
+
+        # 创建一个 QLabel 定时器
+        # 用于限制 statelabel 的显示时间
+        self.stateLabel.timer = QTimer(self) 
+        # 设置为单次触发
+        self.stateLabel.timer.setSingleShot(True)
+        #一秒后启动
+        self.stateLabel.timer.setInterval(1000) 
+        # 连接到提示消失的函数
+        self.stateLabel.timer.timeout.connect(self.stateLabel.hide) 
+
 
         # 创建一个QWidget作为控制工具的容器
         self.controlWidget = QWidget(self)
@@ -79,7 +114,7 @@ class Player(QMainWindow):
         # 创建一个QPushButton作为暂停/播放按钮
         self.playButton = QPushButton(self.controlWidget)
         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        # 修改了这里，使用lambda表达式，否则会直接调用play_pause函数，而不是等待点击事件
+        # 使用lambda表达式，否则会直接调用play_pause函数，而不是等待点击事件
         #self.playButton.clicked.connect(self.play_pause())
         self.playButton.clicked.connect(lambda: self.play_pause())
         self.controlLayout.addWidget(self.playButton)
@@ -87,7 +122,7 @@ class Player(QMainWindow):
         # 创建一个QSlider作为进度条
         self.positionSlider = QSlider(Qt.Horizontal, self.controlWidget)
         #self.positionSlider.sliderMoved.connect(self.setPosition)
-        # 修改了这里，使用lambda表达式，否则会直接调用setPosition函数，而不是等待滑动事件
+        # 使用lambda表达式，否则会直接调用setPosition函数，而不是等待滑动事件
         # self.positionSlider.valueChanged.connect(lambda: self.setPosition(self.positionSlider.value()))
         # 使用 valueChanged 会在进度条更新时发生卡顿，改为 sliderMoved
         self.positionSlider.sliderMoved.connect(lambda: self.setPosition(self.positionSlider.value()))
@@ -98,7 +133,8 @@ class Player(QMainWindow):
         self.controlLayout.addWidget(self.timeLabel)
 
         # 创建一个QSlider作为音量条
-        self.volumeLabel = QLabel("🔊", self.controlWidget) # 添加了一个标签，用于显示音量状态
+        self.volumeLabel = QPushButton("🔊", self.controlWidget) # 添加了一个标签，用于显示音量状态
+        self.volumeLabel.clicked.connect(lambda: self.toggle_mute())
         self.controlLayout.addWidget(self.volumeLabel)
         self.volumeSlider = QSlider(Qt.Horizontal, self.controlWidget)
         self.volumeSlider.setMaximum(100)
@@ -106,7 +142,7 @@ class Player(QMainWindow):
         self.volumeSlider.setValue(50) 
         self.controlLayout.addWidget(self.volumeSlider)
         #self.volumeSlider.valueChanged.connect(self.setVolume)
-        # 修改了这里，使用lambda表达式，否则会直接调用setVolume函数，而不是等待滑动事件
+        # 使用lambda表达式，否则会直接调用setVolume函数，而不是等待滑动事件
         self.volumeSlider.valueChanged.connect(lambda: self.setVolume(self.volumeSlider.value()))
 
 
@@ -191,14 +227,14 @@ class Player(QMainWindow):
             else:
                 self.fullScreen()
 
-    #单擊暂停/继续
+    #重写单双击
     def mousePressVideoFrameEvent(self, event):
         if event.button() == Qt.LeftButton: # 如果是左键点击
-            if self.videoFrame.timer.isActive(): # 如果定时器已经启动
-                self.videoFrame.timer.stop() # 停止定时器
+            if self.videoFrame.clickTimer.isActive(): # 如果定时器已经启动
+                self.videoFrame.clickTimer.stop() # 停止定时器
                 self.videoFrameDouble_click() # 执行双击事件的函数
             else: # 如果定时器没有启动
-                self.videoFrame.timer.start() # 启动定时器
+                self.videoFrame.clickTimer.start() # 启动定时器
 
     def videoFrameSingle_click(self):
         print("单击事件")
@@ -238,7 +274,9 @@ class Player(QMainWindow):
             self.fullScreen()
         # 如果按下的是 Esc 键，那么退出全屏模式
         elif event.key() == Qt.Key_Escape and self.isFullScreen():
-            self.showNormal()
+            #self.showNormal()
+            #改成使用自定义函数
+            self.noFullScreen()
         # 否则，调用父类的方法
         elif event.key() == Qt.Key_M: # 添加了一个快捷键，用于切换静音模式
             self.toggle_mute()
@@ -252,12 +290,24 @@ class Player(QMainWindow):
         if self.player.is_playing():
             self.player.pause()
             self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-#            self.button.setText("播放")
-        # 如果视频已经暂停，那么恢复视频，并设置按钮的文本为“暂停”
-        else:
-            self.player.play()
-            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+            if not self.isFullScreen():
+                return
+            # 判断是否全屏
+            # 如果是全屏，提示继续
+            self.showLabel("暂停")
+            return
+
+            self.button.setText("播放")
+            # 如果视频已经暂停，那么恢复视频，并设置按钮的文本为“暂停”
+
+        self.player.play()
+        self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
 #            self.button.setText("暂停")
+        # 判断是否全屏
+        if not self.isFullScreen():
+            return
+        # 如果是全屏，提示暂停
+        self.showLabel("继续")
 
     def setVolume(self, volume):
         # 根据音量条的值，设置视频的音量
@@ -296,8 +346,33 @@ class Player(QMainWindow):
         self.player.audio_toggle_mute() # 调用播放器的方法，切换静音状态
         if not self.player.audio_get_mute(): # 判断当前是否是静音状态
             self.volumeLabel.setText("🔇") # 如果是静音，就显示一个静音的图标
-        else:
-            self.volumeLabel.setText("🔊") # 如果不是静音，就显示一个正常的图标
+            if not self.isFullScreen():
+                return
+            # 判断是否全屏
+            # 如果是全屏，提示继续
+            self.showLabel("静音")
+            return
+            
+
+        self.volumeLabel.setText("🔊") # 如果不是静音，就显示一个正常的图标
+        if not self.isFullScreen():
+                return
+            # 判断是否全屏
+            # 如果是全屏，提示继续
+        self.showLabel("有声")
+        return
+
+    
+#    def stateLabelHide(self):
+#        self.stateLabel.hide()
+
+    def showLabel(self,str):
+        #self.stateLabel.text=str
+        self.stateLabel.setText(str)
+        self.stateLabel.show()
+        self.stateLabel.timer.start()
+
+
 # 如果是主模块
 if __name__ == "__main__":
     # 创建一个QApplication对象，传入系统参数
